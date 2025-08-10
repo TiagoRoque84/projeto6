@@ -1,0 +1,45 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <form class="d-flex gap-2">
+    <input name="q" value="{{ q }}" class="form-control" placeholder="Buscar por nome">
+    <select name="ativo" class="form-select">
+      <option value="">Todos</option>
+      <option value="1" {{ 'selected' if ativo=='1' else '' }}>Ativos</option>
+      <option value="0" {{ 'selected' if ativo=='0' else '' }}>Inativos</option>
+    </select>
+    <select name="mes" class="form-select">
+      <option value="">Aniversariantes (mês)</option>
+      {% for m in range(1,13) %}
+      <option value="{{m}}" {{ 'selected' if mes==m|string else '' }}>{{'%02d' % m}}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-outline-secondary">Filtrar</button>
+  </form>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('rh.funcoes') }}">Funções</a>
+    <a class="btn btn-success" href="{{ url_for('rh.employees_new') }}">Novo Colaborador</a>
+  </div>
+</div>
+<table class="table table-striped">
+  <thead><tr><th>Nome</th><th>Empresa</th><th>Função</th><th>Admissão</th><th>Tempo de casa</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for e in items %}
+    <tr>
+      <td>{{ e.nome }}</td>
+      <td>{{ e.company.razao_social if e.company else '-' }}</td>
+      <td>{{ e.funcao.nome if e.funcao else '-' }}</td>
+      <td>{{ e.data_admissao or '-' }}</td>
+      <td>{{ e.tempo_de_casa() }}</td>
+      <td>{{ 'Ativo' if e.ativo else 'Inativo' }}</td>
+      <td class="text-end">
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('rh.employee_docs', emp_id=e.id) }}">Docs</a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('rh.employees_edit', emp_id=e.id) }}">Editar</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('rh.employees_pdf', emp_id=e.id) }}" target="_blank">PDF</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
