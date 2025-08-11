@@ -36,7 +36,7 @@ def create_app():
     from blueprints.admin.routes import admin_bp
     from blueprints.admin.users import admin_users_bp
     from blueprints.dash.routes import dash_bp
-    from blueprints.uploads.routes import uploads_bp
+    from blueprints.uploads.routes import uploads_bp  # <- uma única vez
 
     # Registro de blueprints
     app.register_blueprint(auth_bp, url_prefix="/auth")
@@ -46,9 +46,10 @@ def create_app():
     app.register_blueprint(documents_bp, url_prefix="/documentos")
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(admin_users_bp, url_prefix="/admin/usuarios")
-    app.register_blueprint(dash_bp)              # rota /dash
-    app.register_blueprint(uploads_bp)           # rota /uploads/<path>
-        # Filtro Jinja para normalizar caminhos de upload legados
+    app.register_blueprint(dash_bp)              # /dash
+    app.register_blueprint(uploads_bp)           # /uploads/<path>
+
+    # Filtro Jinja para normalizar caminhos de upload legados
     def norm_upload(p: str) -> str:
         if not p:
             return ""
@@ -57,7 +58,6 @@ def create_app():
             p = p[len("uploads/"):]
         return p
     app.jinja_env.filters["norm_upload"] = norm_upload
-
 
     # Agendador de alertas
     from alerts import send_alerts
