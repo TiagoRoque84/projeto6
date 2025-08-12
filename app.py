@@ -4,6 +4,7 @@ from extensions import db, login_manager, migrate
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import timezone
+from flask_login import login_required
 
 def create_app():
     load_dotenv()
@@ -36,9 +37,8 @@ def create_app():
     from blueprints.admin.routes import admin_bp
     from blueprints.admin.users import admin_users_bp
     from blueprints.dash.routes import dash_bp
-    from blueprints.uploads.routes import uploads_bp  # <- uma única vez
+    from blueprints.uploads.routes import uploads_bp  # uma única vez
     from blueprints.pdv.routes import pdv_bp
-
 
     # Registro de blueprints
     app.register_blueprint(auth_bp, url_prefix="/auth")
@@ -48,9 +48,53 @@ def create_app():
     app.register_blueprint(documents_bp, url_prefix="/documentos")
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(admin_users_bp, url_prefix="/admin/usuarios")
-    app.register_blueprint(dash_bp)              # /dash
+    app.register_blueprint(dash_bp)              # pode expor /dash, /dashboard, etc.
     app.register_blueprint(uploads_bp)           # /uploads/<path>
     app.register_blueprint(pdv_bp)
+
+    # === HOME = DASHBOARD (sem redirect) ===
+    # Procura automaticamente o endpoint do painel e cria "/" -> home
+    def _bind_home_to_dashboard(app):
+        target = None
+
+        # 1) Tenta endpoints do blueprint "dash"
+        for ep in app.view_functions:
+            if ep.startswith("dash") and (
+                ep.endswith(".dashboard") or ep.endswith(".index") or ep.endswith(".home")
+                or ep.split(".")[-1] in ("dashboard", "index", "home")
+            ):
+                target = ep
+                break
+
+        # 2) Se não achou, procura pelas rotas conhecidas
+        if not target:
+            for rule in app.url_map.iter_rules():
+                if rule.rule in ("/dashboard", "/dashboard/", "/dash", "/dash/"):
+                    target = rule.endpoint
+                    break
+
+        if not target:
+            print("ATENÇÃO: não encontrei endpoint do painel automaticamente. "
+                  "Se precisar, troque o href do logo para url_for('dash.dashboard').")
+            return
+
+        # Garante que exista o endpoint 'home' apontando para a view do painel
+        view_func = app.view_functions[target]
+        protected_view = login_required(view_func)
+
+        # Se já existe alguma rota '/', reaproveita o endpoint 'home' ou cria um novo
+        has_home_rule = any(rule.rule == "/" for rule in app.url_map.iter_rules())
+        if not has_home_rule:
+            app.add_url_rule("/", endpoint="home", view_func=protected_view)
+        else:
+            # Se existir '/', tenta sobrescrever o endpoint 'home' (caso já exista)
+            app.view_functions["home"] = protected_view
+
+        print(f"Home ('/') apontada para {target}.")
+
+    _bind_home_to_dashboard(app)
+    # === FIM HOME = DASHBOARD ===
+
     # Filtro Jinja para normalizar caminhos de upload legados
     def norm_upload(p: str) -> str:
         if not p:
