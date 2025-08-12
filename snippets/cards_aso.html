@@ -1,0 +1,27 @@
+<!-- Cards de ASO (injetado) -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0;">
+  <div style="border:1px solid #ddd;border-radius:12px;padding:12px;">
+    <h3 style="margin:0 0 8px 0;">ASO vencidos</h3>
+    {% if aso_expired and aso_expired|length > 0 %}
+      <ul style="margin:0;padding-left:18px;">
+        {% for r in aso_expired %}
+          <li>{{ r['nome'] if r.__class__.__name__=='Row' else r.nome }} — {{ (r['aso_vencimento'] if r.__class__.__name__=='Row' else r.aso_vencimento) }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div style="opacity:.7">Nenhum ASO vencido.</div>
+    {% endif %}
+  </div>
+  <div style="border:1px solid #ddd;border-radius:12px;padding:12px;">
+    <h3 style="margin:0 0 8px 0;">ASO que vencem em 30 dias</h3>
+    {% if aso_expiring and aso_expiring|length > 0 %}
+      <ul style="margin:0;padding-left:18px;">
+        {% for r in aso_expiring %}
+          <li>{{ r['nome'] if r.__class__.__name__=='Row' else r.nome }} — {{ (r['aso_vencimento'] if r.__class__.__name__=='Row' else r.aso_vencimento) }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div style="opacity:.7">Nada vence nos próximos 30 dias.</div>
+    {% endif %}
+  </div>
+</div>

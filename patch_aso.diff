@@ -1,0 +1,224 @@
+﻿diff --git a/blueprints/rh/routes.py b/blueprints/rh/routes.py
+--- a/blueprints/rh/routes.py
++++ b/blueprints/rh/routes.py
+@@
+-from flask import Blueprint, render_template
++from flask import Blueprint, render_template, request, current_app
++import sqlite3
++from datetime import datetime
++from pathlib import Path
++
++def _get_db_path():
++    root = Path(current_app.root_path)
++    default = root / "instance" / "app.db"
++    return current_app.config.get("DATABASE", str(default))
++
++def _fetchall(sql, params=()):
++    con = sqlite3.connect(_get_db_path())
++    con.row_factory = sqlite3.Row
++    try:
++        cur = con.execute(sql, params)
++        return cur.fetchall()
++    finally:
++        con.close()
++
++def _ensure_aso_column():
++    con = sqlite3.connect(_get_db_path())
++    try:
++        cols = [r[1] for r in con.execute("PRAGMA table_info(funcionarios)").fetchall()]
++        if "aso_vencimento" not in cols:
++            con.execute("ALTER TABLE funcionarios ADD COLUMN aso_vencimento TEXT")
++            con.commit()
++    finally:
++        con.close()
+ 
+ rh_bp = Blueprint("rh", __name__, url_prefix="/rh")
+ 
+-@rh_bp.route("/funcionarios")
+-def funcionarios_list():
+-    # implementação anterior...
+-    return render_template("rh/funcionarios_list.html")
++@rh_bp.route("/funcionarios")
++def funcionarios_list():
++    """
++    Lista de funcionários com filtro de ASO:
++      ?aso=vencidos|a_vencer|validos  e  ?dias=30
++    """
++    _ensure_aso_column()
++    aso = request.args.get("aso")  # None | 'vencidos' | 'a_vencer' | 'validos'
++    try:
++        dias = int(request.args.get("dias", 30))
++    except ValueError:
++        dias = 30
++
++    base_sql = "SELECT id, nome, cargo, coalesce(aso_vencimento,'') as aso_vencimento FROM funcionarios"
++    where = ""
++    params = []
++    if aso == "vencidos":
++        where = " WHERE aso_vencimento IS NOT NULL AND aso_vencimento <> '' AND DATE(aso_vencimento) < DATE('now')"
++    elif aso == "a_vencer":
++        where = " WHERE aso_vencimento IS NOT NULL AND aso_vencimento <> '' AND DATE(aso_vencimento) BETWEEN DATE('now') AND DATE('now', ?)"
++        params.append(f"+{dias} day")
++    elif aso == "validos":
++        where = " WHERE aso_vencimento IS NOT NULL AND aso_vencimento <> '' AND DATE(aso_vencimento) > DATE('now', ?)"
++        params.append(f"+{dias} day")
++
++    sql = base_sql + where + " ORDER BY DATE(aso_vencimento) ASC"
++    funcionarios = _fetchall(sql, tuple(params))
++    return render_template("rh/funcionarios_list.html", funcionarios=funcionarios, aso=aso, dias=dias)
+diff --git a/templates/rh/funcionarios_list.html b/templates/rh/funcionarios_list.html
+--- a/templates/rh/funcionarios_list.html
++++ b/templates/rh/funcionarios_list.html
+@@
+-<h1>Funcionários</h1>
++<h1>Funcionários</h1>
++
++<!-- Filtro de ASO -->
++<form method="get" style="display:flex;gap:.5rem;align-items:center;margin:8px 0;padding:.5rem;border:1px solid #ddd;border-radius:8px;">
++  <label for="aso">ASO:</label>
++  <select id="aso" name="aso">
++    <option value="" {{ 'selected' if not aso }}>Todos</option>
++    <option value="vencidos" {{ 'selected' if aso=='vencidos' }}>Vencidos</option>
++    <option value="a_vencer" {{ 'selected' if aso=='a_vencer' }}>A vencer</option>
++    <option value="validos" {{ 'selected' if aso=='validos' }}>Válidos</option>
++  </select>
++
++  <label for="dias">Dias:</label>
++  <input id="dias" type="number" name="dias" value="{{ dias or 30 }}" min="1" style="width:90px">
++
++  <button type="submit">Filtrar</button>
++
++  <!-- Atalhos -->
++  <a href="{{ url_for('rh.funcionarios_list', aso='vencidos') }}" style="margin-left:auto">Somente vencidos</a>
++  <a href="{{ url_for('rh.funcionarios_list', aso='a_vencer', dias=30) }}">A vencer (30d)</a>
++  <a href="{{ url_for('rh.funcionarios_list') }}">Limpar</a>
++  <small style="opacity:.7;margin-left:.5rem">Formato da data: YYYY-MM-DD</small>
++</form>
+ 
+-<!-- tabela original -->
++<!-- tabela original -->
+ <table class="table">
+   <thead>
+     <tr>
+       <th>Nome</th>
+       <th>Cargo</th>
+-      <th>...</th>
++      <th>ASO (vencimento)</th>
+     </tr>
+   </thead>
+   <tbody>
+-  {% for f in funcionarios %}
+-    <tr>
+-      <td>{{ f.nome }}</td>
+-      <td>{{ f.cargo }}</td>
+-      <td>...</td>
+-    </tr>
+-  {% endfor %}
++  {% for f in funcionarios %}
++    {% set dt = f['aso_vencimento'] if f.__class__.__name__=='Row' else f.aso_vencimento %}
++    <tr>
++      <td>{{ f['nome'] if f.__class__.__name__=='Row' else f.nome }}</td>
++      <td>{{ f['cargo'] if f.__class__.__name__=='Row' else f.cargo }}</td>
++      <td>{{ dt }}</td>
++    </tr>
++  {% else %}
++    <tr><td colspan="3">Nenhum funcionário encontrado para este filtro.</td></tr>
++  {% endfor %}
+   </tbody>
+ </table>
+diff --git a/app.py b/app.py
+--- a/app.py
++++ b/app.py
+@@
+-from flask import Flask, render_template
++from flask import Flask, render_template, current_app
++import sqlite3
++from pathlib import Path
++
++def _db_path():
++    root = Path(current_app.root_path)
++    default = root / "instance" / "app.db"
++    return current_app.config.get("DATABASE", str(default))
++
++def _db_fetchall(sql, params=()):
++    con = sqlite3.connect(_db_path())
++    con.row_factory = sqlite3.Row
++    try:
++        cur = con.execute(sql, params)
++        return cur.fetchall()
++    finally:
++        con.close()
++
++def _db_ensure_aso_column():
++    con = sqlite3.connect(_db_path())
++    try:
++        cols = [r[1] for r in con.execute("PRAGMA table_info(funcionarios)").fetchall()]
++        if "aso_vencimento" not in cols:
++            con.execute("ALTER TABLE funcionarios ADD COLUMN aso_vencimento TEXT")
++            con.commit()
++    finally:
++        con.close()
+ 
+ app = Flask(__name__)
+ 
+-@app.route("/")
+-def index():
+-    return render_template("index.html")
++@app.route("/")
++def index():
++    """Dashboard com card de ASO (vencidos e a vencer em 30 dias)."""
++    try:
++        _db_ensure_aso_column()
++        aso_expired = _db_fetchall("""
++            SELECT nome, aso_vencimento
++            FROM funcionarios
++            WHERE aso_vencimento IS NOT NULL AND aso_vencimento <> ''
++              AND DATE(aso_vencimento) < DATE('now')
++            ORDER BY DATE(aso_vencimento) ASC
++            LIMIT 100
++        """)
++        aso_expiring = _db_fetchall("""
++            SELECT nome, aso_vencimento
++            FROM funcionarios
++            WHERE aso_vencimento IS NOT NULL AND aso_vencimento <> ''
++              AND DATE(aso_vencimento) BETWEEN DATE('now') AND DATE('now', '+30 day')
++            ORDER BY DATE(aso_vencimento) ASC
++            LIMIT 100
++        """)
++    except Exception:
++        aso_expired, aso_expiring = [], []
++    return render_template("index.html", aso_expired=aso_expired, aso_expiring=aso_expiring)
+diff --git a/templates/index.html b/templates/index.html
+--- a/templates/index.html
++++ b/templates/index.html
+@@
+-<h1>Dashboard</h1>
++<h1>Dashboard</h1>
++
++<!-- Card de ASO -->
++<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0;">
++  <div style="border:1px solid #ddd;border-radius:12px;padding:12px;">
++    <h3 style="margin:0 0 8px 0;">ASO vencidos</h3>
++    {% if aso_expired and aso_expired|length > 0 %}
++      <ul style="margin:0;padding-left:18px;">
++        {% for r in aso_expired %}
++          <li>{{ r['nome'] if r.__class__.__name__=='Row' else r.nome }} — {{ (r['aso_vencimento'] if r.__class__.__name__=='Row' else r.aso_vencimento) }}</li>
++        {% endfor %}
++      </ul>
++    {% else %}
++      <div style="opacity:.7">Nenhum ASO vencido.</div>
++    {% endif %}
++  </div>
++  <div style="border:1px solid #ddd;border-radius:12px;padding:12px;">
++    <h3 style="margin:0 0 8px 0;">ASO que vencem em 30 dias</h3>
++    {% if aso_expiring and aso_expiring|length > 0 %}
++      <ul style="margin:0;padding-left:18px;">
++        {% for r in aso_expiring %}
++          <li>{{ r['nome'] if r.__class__.__name__=='Row' else r.nome }} — {{ (r['aso_vencimento'] if r.__class__.__name__=='Row' else r.aso_vencimento) }}</li>
++        {% endfor %}
++      </ul>
++    {% else %}
++      <div style="opacity:.7">Nada vence nos próximos 30 dias.</div>
++    {% endif %}
++  </div>
++</div>

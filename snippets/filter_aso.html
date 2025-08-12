@@ -1,0 +1,20 @@
+<!-- Filtro de ASO (injetado) -->
+<form method="get" style="display:flex;gap:.5rem;align-items:center;margin:8px 0;padding:.5rem;border:1px solid #ddd;border-radius:8px;">
+  <label for="aso">ASO:</label>
+  <select id="aso" name="aso">
+    <option value="" {{ 'selected' if not aso }}>Todos</option>
+    <option value="vencidos" {{ 'selected' if aso=='vencidos' }}>Vencidos</option>
+    <option value="a_vencer" {{ 'selected' if aso=='a_vencer' }}>A vencer</option>
+    <option value="validos" {{ 'selected' if aso=='validos' }}>Válidos</option>
+  </select>
+
+  <label for="dias">Dias:</label>
+  <input id="dias" type="number" name="dias" value="{{ dias or 30 }}" min="1" style="width:90px">
+
+  <button type="submit">Filtrar</button>
+
+  <a href="{{ url_for(list_endpoint, aso='vencidos') }}" style="margin-left:auto">Somente vencidos</a>
+  <a href="{{ url_for(list_endpoint, aso='a_vencer', dias=30) }}">A vencer (30d)</a>
+  <a href="{{ url_for(list_endpoint) }}">Limpar</a>
+  <small style="opacity:.7;margin-left:.5rem">Data no formato: YYYY-MM-DD</small>
+</form>

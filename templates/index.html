@@ -1,7 +1,6 @@
-
 {% extends 'base.html' %}
 {% block content %}
-<div class="row g-3">
+<div class="row g-3 mb-3">
   <div class="col">
     <div class="card shadow-sm"><div class="card-body">
       <div class="fw-bold">Funcionários</div>
@@ -14,6 +13,86 @@
       <div class="fw-bold">Documentos</div>
       <div class="text-muted small">Vencidos: {{ vencidos }} • A vencer (30d): {{ a_vencer }}</div>
     </div></div>
+  </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+  <div class="col">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">ASO vencidos</h5>
+        {% if aso_expired and aso_expired|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in aso_expired %}<li class="mb-1">{{ r['nome'] }} - {{ r['aso_vencimento'] }}</li>{% endfor %}
+          </ul>
+        {% else %}<div class="text-muted">Nenhum.</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">ASO que vencem em 30 dias</h5>
+        {% if aso_expiring and aso_expiring|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in aso_expiring %}<li class="mb-1">{{ r['nome'] }} - {{ r['aso_vencimento'] }}</li>{% endfor %}
+          </ul>
+        {% else %}<div class="text-muted">Nada.</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Carteiras vencidas</h5>
+        {% if cart_expired and cart_expired|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in cart_expired %}<li class="mb-1">{{ r['nome'] }} - {{ r['carteira_vencimento'] }}</li>{% endfor %}
+          </ul>
+        {% else %}<div class="text-muted">Nenhuma.</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Carteiras que vencem em 30 dias</h5>
+        {% if cart_expiring and cart_expiring|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in cart_expiring %}<li class="mb-1">{{ r['nome'] }} - {{ r['carteira_vencimento'] }}</li>{% endfor %}
+          </ul>
+        {% else %}<div class="text-muted">Nada.</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Toxicológicos vencidos</h5>
+        {% if tox_expired and tox_expired|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in tox_expired %}<li class="mb-1">{{ r['nome'] }} - {{ r['toxico_vencimento'] }}</li>{% endfor %}
+          </ul>
+        {% else %}<div class="text-muted">Nenhum.</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Toxicológicos que vencem em 30 dias</h5>
+        {% if tox_expiring and tox_expiring|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in tox_expiring %}<li class="mb-1">{{ r['nome'] }} - {{ r['toxico_vencimento'] }}</li>{% endfor %}
+          </ul>
+        {% else %}<div class="text-muted">Nada.</div>{% endif %}
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
