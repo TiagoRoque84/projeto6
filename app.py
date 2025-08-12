@@ -37,6 +37,8 @@ def create_app():
     from blueprints.admin.users import admin_users_bp
     from blueprints.dash.routes import dash_bp
     from blueprints.uploads.routes import uploads_bp  # <- uma única vez
+    from blueprints.pdv.routes import pdv_bp
+
 
     # Registro de blueprints
     app.register_blueprint(auth_bp, url_prefix="/auth")
@@ -48,7 +50,7 @@ def create_app():
     app.register_blueprint(admin_users_bp, url_prefix="/admin/usuarios")
     app.register_blueprint(dash_bp)              # /dash
     app.register_blueprint(uploads_bp)           # /uploads/<path>
-
+    app.register_blueprint(pdv_bp)
     # Filtro Jinja para normalizar caminhos de upload legados
     def norm_upload(p: str) -> str:
         if not p:
