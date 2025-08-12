@@ -1,4 +1,3 @@
-
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app
 from flask_login import login_required
 from extensions import db
@@ -10,15 +9,64 @@ from pdf_reports import employee_pdf, toxicos_pdf
 import io, requests
 from datetime import date, timedelta
 
+# NOVOS IMPORTS (uma vez só)
+import sqlite3
+from pathlib import Path
+
 hr_bp = Blueprint("rh", __name__, template_folder='../../templates/hr')
+
+# ---------------------- Helpers de validade (SQLite) ----------------------
+def _db_path_from_uri(uri: str, app_root: str) -> Path:
+    if uri.startswith("sqlite:///"):
+        return Path(app_root) / uri.replace("sqlite:///", "")
+    if uri.startswith("sqlite:////"):
+        return Path("/" + uri.replace("sqlite:////", ""))
+    return Path(app_root) / "app.db"
+
+def _doc_fetchall(sql: str, params=()):
+    uri = current_app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///app.db")
+    db_path = _db_path_from_uri(uri, current_app.root_path)
+    con = sqlite3.connect(str(db_path))
+    con.row_factory = sqlite3.Row
+    try:
+        return con.execute(sql, params).fetchall()
+    finally:
+        con.close()
+
+def _doc_ensure_columns():
+    uri = current_app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///app.db")
+    db_path = _db_path_from_uri(uri, current_app.root_path)
+    if not db_path.exists():
+        return
+    con = sqlite3.connect(str(db_path))
+    try:
+        cols = [r[1] for r in con.execute("PRAGMA table_info(funcionarios)")]
+        for col in ("aso_vencimento", "carteira_vencimento", "toxico_vencimento"):
+            if col not in cols:
+                con.execute(f"ALTER TABLE funcionarios ADD COLUMN {col} TEXT")
+        con.commit()
+    finally:
+        con.close()
+# -------------------------------------------------------------------------
 
 # --------- Colaboradores ---------
 @hr_bp.route("/colaboradores")
 @login_required
 def employees():
+    # Filtros já existentes
     q = request.args.get("q","").strip()
     ativo = request.args.get("ativo","")
     mes_aniversario = request.args.get("mes","")
+
+    # NOVOS filtros de validade
+    doc = request.args.get("doc", "aso")         # 'aso' | 'carteira' | 'toxico'
+    status = request.args.get("status", "")      # 'vencidos' | 'a_vencer' | 'validos' | ''
+    try:
+        dias = int(request.args.get("dias", 30))
+    except ValueError:
+        dias = 30
+
+    # Query base (SQLAlchemy) — mantém sua listagem normal
     query = Employee.query
     if q:
         like = f"%{q}%"
@@ -32,7 +80,54 @@ def employees():
             items = [e for e in items if e.data_nascimento and e.data_nascimento.month==m]
         except:
             pass
-    return render_template("hr/employees_list.html", items=items, q=q, ativo=ativo, mes=mes_aniversario)
+
+    # ---- Enriquecimento com vencimento do documento escolhido ----
+    venc_map = {}
+    try:
+        _doc_ensure_columns()
+        col_map = {
+            "aso": "aso_vencimento",
+            "carteira": "carteira_vencimento",
+            "toxico": "toxico_vencimento",
+        }
+        col = col_map.get(doc, "aso_vencimento")
+
+        if items:
+            ids = [e.id for e in items]
+            # Monta IN dinamicamente
+            placeholders = ",".join(["?"] * len(ids))
+            base_sql = f"SELECT id, COALESCE({col}, '') AS venc FROM funcionarios WHERE id IN ({placeholders})"
+            where = ""
+            params = list(ids)
+
+            if status == "vencidos":
+                where += f" AND {col} IS NOT NULL AND {col} <> '' AND DATE({col}) < DATE('now')"
+            elif status == "a_vencer":
+                where += f" AND {col} IS NOT NULL AND {col} <> '' AND DATE({col}) BETWEEN DATE('now') AND DATE('now', ?)"
+                params.append(f"+{dias} day")
+            elif status == "validos":
+                where += f" AND {col} IS NOT NULL AND {col} <> '' AND DATE({col}) > DATE('now', ?)"
+                params.append(f"+{dias} day")
+
+            rows = _doc_fetchall(base_sql + where, tuple(params))
+            venc_map = {int(r["id"]): r["venc"] for r in rows}
+
+            # Se status foi aplicado, filtramos a lista para manter só quem casou na consulta
+            if status in ("vencidos", "a_vencer", "validos"):
+                idset = set(venc_map.keys())
+                items = [e for e in items if e.id in idset]
+
+    except Exception as ex:
+        current_app.logger.warning("Filtro de validade indisponível: %s", ex)
+        # segue com a listagem normal, sem vencimento
+
+    return render_template(
+        "hr/employees_list.html",
+        items=items,
+        q=q, ativo=ativo, mes=mes_aniversario,
+        # novos contextos p/ template (usaremos no próximo passo)
+        doc=doc, status=status, dias=dias, venc_map=venc_map
+    )
 
 @hr_bp.route("/colaboradores/new", methods=["GET","POST"])
 @login_required
@@ -133,7 +228,7 @@ def employee_docs(emp_id):
         docs = [d for d in docs if q.lower() in (d.tipo or '').lower() or q.lower() in (d.descricao or '').lower()]
     return render_template("hr/employee_docs_list.html", emp=emp, form=form, docs=docs)
 
-# --------- Toxicológico ---------
+# --------- Toxicológico (rotas antigas mantidas) ---------
 @hr_bp.route("/toxicos")
 @login_required
 def toxicos():

@@ -1,0 +1,64 @@
+diff --git a/blueprints/admin/routes.py b/blueprints/admin/routes.py
+--- a/blueprints/admin/routes.py
++++ b/blueprints/admin/routes.py
+@@
+-from flask import Blueprint, render_template, request, flash
++from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
++from pathlib import Path
++from werkzeug.utils import secure_filename
++import shutil, time
+@@
+-@admin_bp.route("/admin/config", methods=["GET", "POST"])
+-@login_required
+-@admin_required
+-def settings():
+-    if request.method == "POST":
+-        # copia direta para static
+-        shutil.copyfile(src, dst); msgs.append("Logo da sidebar atualizada.")
+-        return render_template("admin/config.html", msgs=msgs)
+-    return render_template("admin/config.html")
++FIELD_MAP = {
++    # aceitamos vários nomes de campo apontando para os destinos finais
++    "logo_sidebar":   "static/img/logo.png",
++    "logo_cabecario": "static/img/logo.png",
++    "logo_header":    "static/img/logo.png",
++    "logo_login":     "static/img/logo-login.png",
++}
++
++def _save_logo(field_name: str, target_rel: str) -> bool:
++    """Salva upload (se houver) em /branding e copia para /static/img."""
++    file = request.files.get(field_name)
++    if not file or not file.filename:
++        return False
++    ext = Path(file.filename).suffix.lower()
++    if ext not in {".png", ".jpg", ".jpeg", ".webp"}:
++        raise ValueError("Formato inválido. Envie PNG/JPG/WEBP.")
++    base_dir = Path(current_app.root_path)
++    branding_dir = base_dir / "branding"
++    branding_dir.mkdir(parents=True, exist_ok=True)
++    tmp = branding_dir / f"{int(time.time())}_{secure_filename(file.filename)}"
++    file.save(tmp)
++    dst = base_dir / target_rel
++    dst.parent.mkdir(parents=True, exist_ok=True)
++    shutil.copyfile(tmp, dst)
++    return True
++
++@admin_bp.route("/admin/config", methods=["GET", "POST"])
++@login_required
++@admin_required
++def settings():
++    if request.method == "POST":
++        try:
++            changed = False
++            for field, target in FIELD_MAP.items():
++                changed |= _save_logo(field, target)
++            if changed:
++                flash("Logos atualizadas com sucesso.", "success")
++            else:
++                flash("Nenhum arquivo enviado.", "info")
++        except Exception as e:
++            current_app.logger.exception("Falha ao atualizar logo")
++            flash(f"Falha ao atualizar logo: {e}", "danger")
++        # volta pra página evitando reenvio de formulário
++        return redirect(url_for("admin.settings"))
++    return render_template("admin/config.html")

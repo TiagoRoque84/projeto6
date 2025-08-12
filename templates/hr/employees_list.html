@@ -1,8 +1,8 @@
-
 {% extends 'base.html' %}
 {% block content %}
 <div class="d-flex justify-content-between mb-3">
-  <form class="d-flex gap-2">
+  <form class="d-flex flex-wrap gap-2">
+    <!-- Filtros já existentes -->
     <input name="q" value="{{ q }}" class="form-control" placeholder="Buscar por nome">
     <select name="ativo" class="form-select">
       <option value="">Todos</option>
@@ -15,15 +15,47 @@
       <option value="{{m}}" {{ 'selected' if mes==m|string else '' }}>{{'%02d' % m}}</option>
       {% endfor %}
     </select>
+
+    <!-- NOVOS filtros de documentos -->
+    <select name="doc" class="form-select" title="Documento">
+      <option value="aso" {{ 'selected' if doc=='aso' else '' }}>ASO</option>
+      <option value="carteira" {{ 'selected' if doc=='carteira' else '' }}>Carteira</option>
+      <option value="toxico" {{ 'selected' if doc=='toxico' else '' }}>Toxicológico</option>
+    </select>
+    <select name="status" class="form-select" title="Status">
+      <option value="" {{ 'selected' if not status else '' }}>Todos</option>
+      <option value="vencidos" {{ 'selected' if status=='vencidos' else '' }}>Vencidos</option>
+      <option value="a_vencer" {{ 'selected' if status=='a_vencer' else '' }}>A vencer</option>
+      <option value="validos" {{ 'selected' if status=='validos' else '' }}>Válidos (>{% raw %}{{{% endraw %} dias {% raw %}}}{% endraw %})</option>
+    </select>
+    <input name="dias" type="number" min="1" value="{{ dias or 30 }}" class="form-control" style="width:100px" title="Janela em dias (a vencer/válidos)">
+
     <button class="btn btn-outline-secondary">Filtrar</button>
   </form>
-  <div class="d-flex gap-2">
+
+  <div class="d-flex gap-2 align-items-center">
+    <small class="text-muted me-2">
+      Documento atual:
+      {% if doc=='aso' %}ASO{% elif doc=='carteira' %}Carteira{% else %}Toxicológico{% endif %}
+    </small>
     <a class="btn btn-outline-secondary" href="{{ url_for('rh.funcoes') }}">Funções</a>
     <a class="btn btn-success" href="{{ url_for('rh.employees_new') }}">Novo Colaborador</a>
   </div>
 </div>
+
 <table class="table table-striped">
-  <thead><tr><th>Nome</th><th>Empresa</th><th>Função</th><th>Admissão</th><th>Tempo de casa</th><th>Status</th><th></th></tr></thead>
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Empresa</th>
+      <th>Função</th>
+      <th>Admissão</th>
+      <th>Tempo de casa</th>
+      <th>Vencimento (doc)</th>  <!-- NOVA coluna -->
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
   <tbody>
     {% for e in items %}
     <tr>
@@ -32,6 +64,7 @@
       <td>{{ e.funcao.nome if e.funcao else '-' }}</td>
       <td>{{ e.data_admissao or '-' }}</td>
       <td>{{ e.tempo_de_casa() }}</td>
+      <td>{{ venc_map.get(e.id, '') }}</td>  <!-- NOVA célula -->
       <td>{{ 'Ativo' if e.ativo else 'Inativo' }}</td>
       <td class="text-end">
         <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('rh.employee_docs', emp_id=e.id) }}">Docs</a>

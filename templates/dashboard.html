@@ -1,15 +1,140 @@
-
 {% extends 'base.html' %}
 {% block content %}
-<div class="alert alert-success">Bem-vindo!</div>
-<div class="row g-3">
-  <div class="col-md-3"><div class="card border-danger"><div class="card-body"><div class="text-muted">Docs Vencidos</div><div class="display-6">{{ docs_venc }}</div></div></div></div>
-  <div class="col-md-3"><div class="card border-warning"><div class="card-body"><div class="text-muted">Docs a Vencer (30d)</div><div class="display-6">{{ docs_avencer }}</div></div></div></div>
-  <div class="col-md-3"><div class="card border-danger"><div class="card-body"><div class="text-muted">ASO Vencidos</div><div class="display-6">{{ aso_venc }}</div></div></div></div>
-  <div class="col-md-3"><div class="card border-warning"><div class="card-body"><div class="text-muted">ASO a Vencer (30d)</div><div class="display-6">{{ aso_avencer }}</div></div></div></div>
-  <div class="col-md-3"><div class="card border-danger mt-3"><div class="card-body"><div class="text-muted">Tóxico Vencidos</div><div class="display-6">{{ tox_venc }}</div></div></div></div>
-  <div class="col-md-3"><div class="card border-warning mt-3"><div class="card-body"><div class="text-muted">Tóxico a Vencer (30d)</div><div class="display-6">{{ tox_avencer }}</div></div></div></div>
-  <div class="col-md-3"><div class="card border-secondary mt-3"><div class="card-body"><div class="text-muted">Funcionários</div><div class="display-6">{{ total_func }}</div></div></div></div>
-  <div class="col-md-3"><div class="card border-secondary mt-3"><div class="card-body"><div class="text-muted">Ativos / Inativos</div><div class="display-6">{{ ativos }} / {{ inativos }}</div></div></div></div>
+<h1 class="mb-3">Dashboard</h1>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+
+  <!-- ASO vencidos -->
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title mb-3">ASO vencidos</h5>
+        {% if aso_expired and aso_expired|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in aso_expired %}
+              <li class="mb-1">{{ r['nome'] }} - {{ r['aso_vencimento'] }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-muted">Nenhum.</div>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0">
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('rh.employees', doc='aso', status='vencidos') }}">Ver lista</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ASO a vencer (30d) -->
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title mb-3">ASO que vencem em 30 dias</h5>
+        {% if aso_expiring and aso_expiring|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in aso_expiring %}
+              <li class="mb-1">{{ r['nome'] }} - {{ r['aso_vencimento'] }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-muted">Nada.</div>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0">
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('rh.employees', doc='aso', status='a_vencer', dias=30) }}">Ver lista</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Carteiras vencidas -->
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Carteiras vencidas</h5>
+        {% if cart_expired and cart_expired|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in cart_expired %}
+              <li class="mb-1">{{ r['nome'] }} - {{ r['carteira_vencimento'] }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-muted">Nenhuma.</div>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0">
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('rh.employees', doc='carteira', status='vencidos') }}">Ver lista</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Carteiras a vencer (30d) -->
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Carteiras que vencem em 30 dias</h5>
+        {% if cart_expiring and cart_expiring|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in cart_expiring %}
+              <li class="mb-1">{{ r['nome'] }} - {{ r['carteira_vencimento'] }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-muted">Nada.</div>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0">
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('rh.employees', doc='carteira', status='a_vencer', dias=30) }}">Ver lista</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toxicológicos vencidos -->
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Toxicológicos vencidos</h5>
+        {% if tox_expired and tox_expired|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in tox_expired %}
+              <li class="mb-1">{{ r['nome'] }} - {{ r['toxico_vencimento'] }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-muted">Nenhum.</div>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0">
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('rh.employees', doc='toxico', status='vencidos') }}">Ver lista</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toxicológicos a vencer (30d) -->
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Toxicológicos que vencem em 30 dias</h5>
+        {% if tox_expiring and tox_expiring|length %}
+          <ul class="list-unstyled mb-0">
+            {% for r in tox_expiring %}
+              <li class="mb-1">{{ r['nome'] }} - {{ r['toxico_vencimento'] }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-muted">Nada.</div>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-transparent border-0 pt-0">
+        <a class="btn btn-sm btn-outline-primary"
+           href="{{ url_for('rh.employees', doc='toxico', status='a_vencer', dias=30) }}">Ver lista</a>
+      </div>
+    </div>
+  </div>
+
 </div>
 {% endblock %}
