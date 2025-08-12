@@ -26,7 +26,7 @@
       <option value="" {{ 'selected' if not status else '' }}>Todos</option>
       <option value="vencidos" {{ 'selected' if status=='vencidos' else '' }}>Vencidos</option>
       <option value="a_vencer" {{ 'selected' if status=='a_vencer' else '' }}>A vencer</option>
-      <option value="validos" {{ 'selected' if status=='validos' else '' }}>Válidos (>{% raw %}{{{% endraw %} dias {% raw %}}}{% endraw %})</option>
+      <option value="validos" {{ 'selected' if status=='validos' else '' }}>Válidos (>{{ dias }} dias)</option>
     </select>
     <input name="dias" type="number" min="1" value="{{ dias or 30 }}" class="form-control" style="width:100px" title="Janela em dias (a vencer/válidos)">
 

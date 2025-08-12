@@ -29,6 +29,12 @@
     <div class="col-md-3 mb-3">{{ form.celular.label }} {{ form.celular(class_='form-control', id='celular') }}</div>
     <div class="col-md-6 mb-3">{{ form.email.label }} {{ form.email(class_='form-control') }}</div>
   </div>
+
+  <div class="row">
+    <div class="col-md-3 mb-3">{{ form.filho_menor14.label }} {{ form.filho_menor14(class_='form-select') }}</div>
+    <div class="col-md-5 mb-3">{{ form.escolaridade.label }} {{ form.escolaridade(class_='form-select') }}</div>
+  </div>
+
   <div class="row">
     <div class="col-md-3 mb-3">{{ form.cep.label }} {{ form.cep(class_='form-control', id='cep') }}</div>
     <div class="col-md-5 mb-3">{{ form.logradouro.label }} {{ form.logradouro(class_='form-control') }}</div>
@@ -56,8 +62,8 @@
   </div>
   <button class="btn btn-primary">Salvar</button>
 </form>
+
 <script>
-// Simple masks without external libs
 function maskCPF(v){
   v=v.replace(/\D/g,'').slice(0,11);
   v=v.replace(/(\d{3})(\d)/,'$1.$2');
@@ -81,26 +87,21 @@ function maskCurrency(v){
   if(!v) return '';
   const int = (parseInt(v,10) || 0).toString();
   let r = int.replace(/(\d{1,})(\d{2})$/,'$1,$2');
-  r = r.replace(/\B(?=(\d{3})+(?!\d))/g,'.'); // thousands with dot
+  r = r.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
   return 'R$ ' + r;
 }
 document.addEventListener('DOMContentLoaded', function(){
   const cpf=document.getElementById('cpf');
   if(cpf){ cpf.addEventListener('input', (e)=>{ e.target.value = maskCPF(e.target.value); }); }
-
   ['fone','celular'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){ el.addEventListener('input', (e)=>{ e.target.value = maskPhone(e.target.value); }); }
   });
-
   const sal=document.getElementById('salario');
   if(sal){
     sal.addEventListener('input', (e)=>{ e.target.value = maskCurrency(e.target.value); });
-    // if veio com valor salvo, normaliza
     sal.value = maskCurrency(sal.value||'');
   }
-
-  // CEP auto fill (reuse API endpoint)
   const cepInput = document.getElementById('cep');
   if(cepInput){
     const fill = (j) => {

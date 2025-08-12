@@ -64,6 +64,25 @@ class EmployeeForm(FlaskForm):
     cnh_validade = DateField("Validade CNH", validators=[Optional()])
     exame_toxico_validade = DateField("Validade Toxicológico", validators=[Optional()])
     foto = FileField("Foto (jpg/png)", validators=[Optional()])
+
+    # Novos campos
+    filho_menor14 = SelectField("Possui filho menor de 14 anos?", choices=[("", ""), ("1","Sim"), ("0","Não")], coerce=str, validators=[Optional()])
+    escolaridade = SelectField(
+        "Escolaridade",
+        choices=[
+            ("",""),
+            ("Fundamental incompleto","Fundamental incompleto"),
+            ("Fundamental completo","Fundamental completo"),
+            ("Médio incompleto","Médio incompleto"),
+            ("Médio completo","Médio completo"),
+            ("Técnico","Técnico"),
+            ("Superior incompleto","Superior incompleto"),
+            ("Superior completo","Superior completo"),
+            ("Pós-graduação","Pós-graduação"),
+        ],
+        validators=[Optional()],
+    )
+
     submit = SubmitField("Salvar")
 
 class DocumentForm(FlaskForm):

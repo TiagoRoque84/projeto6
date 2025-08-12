@@ -9,7 +9,7 @@ from pdf_reports import employee_pdf, toxicos_pdf
 import io, requests
 from datetime import date, timedelta
 
-# NOVOS IMPORTS (uma vez só)
+# NOVOS IMPORTS
 import sqlite3
 from pathlib import Path
 
@@ -94,7 +94,6 @@ def employees():
 
         if items:
             ids = [e.id for e in items]
-            # Monta IN dinamicamente
             placeholders = ",".join(["?"] * len(ids))
             base_sql = f"SELECT id, COALESCE({col}, '') AS venc FROM funcionarios WHERE id IN ({placeholders})"
             where = ""
@@ -112,20 +111,17 @@ def employees():
             rows = _doc_fetchall(base_sql + where, tuple(params))
             venc_map = {int(r["id"]): r["venc"] for r in rows}
 
-            # Se status foi aplicado, filtramos a lista para manter só quem casou na consulta
             if status in ("vencidos", "a_vencer", "validos"):
                 idset = set(venc_map.keys())
                 items = [e for e in items if e.id in idset]
 
     except Exception as ex:
         current_app.logger.warning("Filtro de validade indisponível: %s", ex)
-        # segue com a listagem normal, sem vencimento
 
     return render_template(
         "hr/employees_list.html",
         items=items,
         q=q, ativo=ativo, mes=mes_aniversario,
-        # novos contextos p/ template (usaremos no próximo passo)
         doc=doc, status=status, dias=dias, venc_map=venc_map
     )
 

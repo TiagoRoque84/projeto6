@@ -80,6 +80,10 @@ class Employee(db.Model):
     exame_toxico_validade = db.Column(db.Date)
     foto_path = db.Column(db.String(300))
 
+    # Novos campos
+    filho_menor14 = db.Column(db.Boolean)                # True/False
+    escolaridade = db.Column(db.String(40))              # ex.: Médio completo
+
     company = db.relationship("Company")
     funcao = db.relationship("Funcao")
 

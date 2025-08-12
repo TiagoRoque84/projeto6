@@ -5,12 +5,11 @@ from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import timezone
 
-# --- Novos imports para garantir colunas no SQLite ---
+# --- Garantia das colunas no SQLite (ASO/Carteira/Tóxico) ---
 import sqlite3
 from urllib.parse import urlparse
 from pathlib import Path
-# -----------------------------------------------------
-
+# -------------------------------------------------------------
 
 def create_app():
     load_dotenv()
@@ -64,27 +63,21 @@ def create_app():
         if p.startswith("uploads/"):
             p = p[len("uploads/"):]
         return p
-
     app.jinja_env.filters["norm_upload"] = norm_upload
 
-    # ---------- Garantia das colunas de vencimento (SQLite) ----------
-    # Cria as colunas se não existirem nas tabelas que você pode ter:
-    # 'funcionarios', 'colaboradores' ou 'employees'.
+    # ---------- Garantir colunas (SQLite) ----------
     def _ensure_doc_columns(app_):
         uri = app_.config.get("SQLALCHEMY_DATABASE_URI", "")
         if not uri.startswith("sqlite"):
-            return  # só precisamos disso para SQLite
+            return  # só para SQLite
 
         # Resolve caminho do arquivo sqlite
-        # Ex.: sqlite:///app.db  -> <root>/app.db
-        #      sqlite:////abs.db -> /abs.db
         parsed = urlparse(uri)
         if uri.startswith("sqlite:///"):
             db_path = Path(app_.root_path) / uri.replace("sqlite:///", "")
-        elif uri.startswith("sqlite:////"):  # caminho absoluto
+        elif uri.startswith("sqlite:////"):
             db_path = Path(uri.replace("sqlite:////", "/"))
         else:
-            # fallback: app.db no root do app
             db_path = Path(app_.root_path) / "app.db"
 
         if not db_path.exists():
@@ -92,22 +85,18 @@ def create_app():
 
         con = sqlite3.connect(str(db_path))
         try:
-            def table_exists(name: str) -> bool:
-                row = con.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-                    (name,)
-                ).fetchone()
-                return bool(row)
-
-            def ensure_on(name: str):
-                if not table_exists(name):
-                    return
-                cols = [r[1] for r in con.execute(f"PRAGMA table_info({name})")]
+            def ensure_on(table: str):
+                cols = [r[1] for r in con.execute(f"PRAGMA table_info({table})")]
                 for col in ("aso_vencimento", "carteira_vencimento", "toxico_vencimento"):
                     if col not in cols:
-                        con.execute(f"ALTER TABLE {name} ADD COLUMN {col} TEXT")
+                        con.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
 
+            # tente nas tabelas comuns
             for t in ("funcionarios", "colaboradores", "employees"):
+                try:
+                    con.execute(f"SELECT 1 FROM {t} LIMIT 1")
+                except Exception:
+                    continue
                 ensure_on(t)
 
             con.commit()
@@ -118,9 +107,8 @@ def create_app():
         try:
             _ensure_doc_columns(app)
         except Exception as e:
-            # Não falha o servidor por causa disso
             app.logger.warning("Não foi possível garantir colunas de vencimento: %s", e)
-    # ----------------------------------------------------------------
+    # ------------------------------------------------
 
     # Agendador de alertas
     from alerts import send_alerts
